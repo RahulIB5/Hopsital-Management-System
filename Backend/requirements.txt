@@ -1,0 +1,24 @@
+# Core FastAPI dependencies
+fastapi          # FastAPI framework for building the API
+uvicorn          # ASGI server to run FastAPI
+pydantic         # Data validation and settings management
+
+# Prisma ORM for PostgreSQL
+prisma           # Prisma Python client for database access
+psycopg2-binary  # PostgreSQL adapter for Python (binary for easier setup)
+
+# Environment variable management
+python-dotenv    # Load environment variables from .env file
+
+# Notification dependencies
+fastapi-mail     # Email notifications (e.g., SendGrid or SMTP)
+twilio           # SMS notifications via Twilio
+apscheduler      # Scheduling tasks (e.g., daily appointment checks)
+
+# Optional authentication dependencies
+python-jose      # JWT for authentication
+passlib[bcrypt]  # Password hashing with bcrypt
+python-multipart # Form data parsing for login endpoint
+
+# Utilities
+httpx            # HTTP client for testing or external API calls
