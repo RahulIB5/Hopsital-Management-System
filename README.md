@@ -23,16 +23,6 @@
     - **Target 3.2:** Reducing preventable deaths
     - **Target 3.8:** Achieving universal health coverage
 
-- **Development Details:**
-  - Developed as a **Minimum Viable Product (MVP)**
-  - Completed in a **two-week sprint**
-
-- **Differentiators:**
-  - Simple and modern architecture
-  - Patient-centric design
-  - Focus on resource-constrained healthcare settings
-  - Enhances clinical workflows and patient outcomes
-  
 ---
 
 - FrontEnd
