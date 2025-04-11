@@ -4,6 +4,9 @@ from pydantic import BaseModel
 from ..database import get_db
 from datetime import datetime
 
+# This module defines the API routes for managing appointments in the healthcare system.
+# It includes endpoints for creating, retrieving, updating, and deleting appointments,
+
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 
 class AppointmentCreate(BaseModel):
