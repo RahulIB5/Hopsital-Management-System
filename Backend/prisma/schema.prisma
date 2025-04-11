@@ -1,0 +1,53 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")  // For migrations
+}
+
+generator client {
+  provider = "prisma-client-py"
+}
+
+model Patient {
+  id          Int      @id @default(autoincrement())
+  name        String
+  email       String   @unique
+  phone       String?
+  dob         DateTime
+  medicalHistory MedicalHistory[]
+  appointments Appointment[]
+}
+
+model MedicalHistory {
+  id          Int      @id @default(autoincrement())
+  patientId   Int
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  diagnosis   String
+  treatment   String?
+  date        DateTime
+}
+
+model Appointment {
+  id          Int      @id @default(autoincrement())
+  patientId   Int
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  doctorId    Int
+  doctor      Doctor   @relation(fields: [doctorId], references: [id])
+  dateTime    DateTime
+  status      String   @default("Scheduled")
+}
+
+model Doctor {
+  id          Int      @id @default(autoincrement())
+  name        String
+  specialty   String
+  appointments Appointment[]
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  role      String
+  createdAt DateTime @default(now())
+}
