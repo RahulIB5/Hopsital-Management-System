@@ -15,7 +15,6 @@
 - **Key Features:**
   - Real-time appointment scheduling
   - Multi-channel patient notifications (via email and SMS)
-  - Secure access control through user authentication
   - Scalable and secure for small to medium-sized healthcare facilities
 
 - **SDG Alignment:**
@@ -29,7 +28,15 @@
 
 ```sh
 cd Frontend
+```
+
+1. Install dependanccies and assets
+```
 npm install
+```
+
+2. Start server
+```
 npm run dev
 ```
 
@@ -55,4 +62,15 @@ venv\Scripts\activate
 ```
 pip install -r requirements.txt
 ```
+
+4. Generate Prisma assets
+```
+prisma generate
+```
+
+5. Start uvicorn server
+```
+uvicorn app.main:app --reload
+```
+
 
