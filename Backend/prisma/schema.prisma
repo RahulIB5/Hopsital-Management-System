@@ -13,7 +13,7 @@ model Patient {
   name        String
   email       String   @unique
   phone       String?
-  dob         DateTime
+  dob         String?
   medicalHistory MedicalHistory[]
   appointments Appointment[]
 }
