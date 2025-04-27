@@ -18,8 +18,10 @@ class AppointmentCreate(BaseModel):
     status: str = "Scheduled"
 
 class AppointmentUpdate(BaseModel):
-    dateTime: str | None
-    status: str | None
+    patientId: int | None = None  # Add patientId to allow updating the patient
+    doctorId: int | None = None   # Add doctorId to allow updating the doctor
+    dateTime: str | None = None
+    status: str | None = None
 
 @router.post("/", status_code=201)
 async def create_appointment(
@@ -46,9 +48,10 @@ async def create_appointment(
             data={
                 "patientId": appointment.patientId,
                 "doctorId": appointment.doctorId,
-                "dateTime": parsed_date.isoformat(),
+                "dateTime": parsed_date,
                 "status": appointment.status,
-            }
+            },
+            include={"patient": True, "doctor": True}
         )
         logger.debug(f"Created appointment: {new_appointment}")
         return new_appointment
@@ -129,13 +132,33 @@ async def update_appointment(
         existing = await db.appointment.find_unique(where={"id": appointment_id})
         if not existing:
             raise HTTPException(status_code=404, detail="Appointment not found")
-        return await db.appointment.update(
+        
+        # Validate patientId and doctorId if provided
+        if appointment.patientId is not None:
+            patient = await db.patient.find_unique(where={"id": appointment.patientId})
+            if not patient:
+                raise HTTPException(status_code=400, detail="Invalid patient ID")
+        if appointment.doctorId is not None:
+            doctor = await db.doctor.find_unique(where={"id": appointment.doctorId})
+            if not doctor:
+                raise HTTPException(status_code=400, detail="Invalid doctor ID")
+
+        update_data = {}
+        if appointment.patientId is not None:
+            update_data["patientId"] = appointment.patientId
+        if appointment.doctorId is not None:
+            update_data["doctorId"] = appointment.doctorId
+        if appointment.dateTime:
+            update_data["dateTime"] = datetime.fromisoformat(appointment.dateTime.replace("Z", "+00:00"))
+        if appointment.status:
+            update_data["status"] = appointment.status
+
+        updated_appointment = await db.appointment.update(
             where={"id": appointment_id},
-            data={
-                "dateTime": appointment.dateTime,
-                "status": appointment.status,
-            }
+            data=update_data,
+            include={"patient": True, "doctor": True}  # Include related data in the response
         )
+        return updated_appointment
     except Exception as e:
         logger.error(f"Error updating appointment {appointment_id}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")

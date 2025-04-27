@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { LogIn } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import api from '../lib/axios';
-import toast from 'react-hot-toast';
+import toast, { Toaster } from 'react-hot-toast';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -20,7 +20,6 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      // Use URLSearchParams for application/x-www-form-urlencoded
       const formData = new URLSearchParams();
       formData.append('username', email);
       formData.append('password', password);
@@ -38,17 +37,25 @@ export default function Login() {
       toast.success('Login successful');
       navigate(from, { replace: true });
     } catch (error: any) {
-      // Handle error message properly
       let errorMessage = 'Invalid email or password';
-      if (error.response?.data?.detail) {
-        if (Array.isArray(error.response.data.detail)) {
+      if (error.response) {
+        if (Array.isArray(error.response.data?.detail)) {
           errorMessage = error.response.data.detail.map((err: any) => err.msg).join(', ');
         } else {
-          errorMessage = error.response.data.detail;
+          errorMessage = error.response.data?.detail || errorMessage;
         }
+      } else if (error.request) {
+        errorMessage = 'Network error: Unable to reach the server. Check CORS settings or server status.';
+      } else {
+        errorMessage = error.message || errorMessage;
       }
       toast.error(errorMessage);
-      console.error('Login error:', error.response?.data || error);
+      console.error('Login error:', {
+        message: error.message,
+        response: error.response?.data,
+        request: error.request,
+        config: error.config,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -56,6 +63,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <Toaster position="top-center" />
       <div className="max-w-md w-full space-y-8">
         <div>
           <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-blue-100">

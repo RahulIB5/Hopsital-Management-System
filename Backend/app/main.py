@@ -9,18 +9,16 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For production, specify your frontend origin
+    allow_origins=["http://localhost:5173"],  # Match your frontend origin
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(auth.router)  # Add the auth router
-app.include_router(users.router)  # Add the users router
+app.include_router(auth.router)
+app.include_router(users.router)
 app.include_router(patients.router)
 app.include_router(appointments.router)
 app.include_router(doctors.router)

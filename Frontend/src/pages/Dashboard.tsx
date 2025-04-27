@@ -1,26 +1,47 @@
 import { useState, useEffect } from 'react';
-import { BarChart, Users, Calendar, Activity } from 'lucide-react';
+import { Users, Calendar, Activity } from 'lucide-react';
 import api from '../lib/axios';
-import toast from 'react-hot-toast';
-import { format } from 'date-fns';
+import toast, { Toaster } from 'react-hot-toast';
+import { format, subDays } from 'date-fns';
 import { useAuthStore } from '../stores/authStore';
+import { useNavigate } from 'react-router-dom';
 
+// Define interfaces
 interface Appointment {
   id: number;
   patient: { id: number; name: string } | null;
   doctor: { id: number; name: string } | null;
   dateTime: string;
   status: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface Doctor {
   id: number;
   name: string;
   specialty: string;
+  createdAt: string; // Assuming this field exists
+}
+
+interface Patient {
+  id: number;
+  name: string;
+  email: string;
+  phone: string | null;
+  dob: string;
+  createdAt: string; // Assuming this field exists
+}
+
+interface Stat {
+  name: string;
+  value: string;
+  change: string;
+  icon: React.ComponentType<any>; // Use a more permissive type or import LucideProps from lucide-react
 }
 
 export default function Dashboard() {
-  const [stats, setStats] = useState([
+  const [stats, setStats] = useState<Stat[]>([
     { name: 'Total Patients', value: '0', change: '0%', icon: Users },
     { name: 'Total Appointments', value: '0', change: '0%', icon: Calendar },
     { name: 'Active Doctors', value: '0', change: '0%', icon: Activity },
@@ -28,54 +49,126 @@ export default function Dashboard() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuthStore();
 
   useEffect(() => {
-    console.log('Current token:', useAuthStore.getState().token);
-    const fetchData = async () => {
-      try {
-        const promises = [
-          api.get('/patients').catch((err) => ({ error: err, data: [] })),
-          api.get('/appointments').catch((err) => ({ error: err, data: [] })),
-          api.get('/doctors').catch((err) => ({ error: err, data: [] })),
-        ];
-        const [patientsRes, appointmentsRes, doctorsRes] = await Promise.all(promises);
+    if (!isAuthenticated()) {
+      navigate('/login');
+    } else {
+      const fetchData = async () => {
+        try {
+          // Define date ranges
+          const today = new Date();
+          const currentPeriodStart = subDays(today, 30); // Last 30 days
+          const previousPeriodStart = subDays(today, 60); // 60 to 30 days ago
+          const previousPeriodEnd = subDays(today, 31);
 
-        if ('error' in patientsRes) {
-          console.error('Patients fetch error:', patientsRes.error);
-          toast.error('Failed to fetch patients');
-        }
-        if ('error' in appointmentsRes) {
-          console.error('Appointments fetch error:', appointmentsRes.error);
-          toast.error('Failed to fetch appointments');
-        }
-        if ('error' in doctorsRes) {
-          console.error('Doctors fetch error:', doctorsRes.error);
-          toast.error('Failed to fetch doctors');
-        }
+          // Format dates for API queries (ISO 8601)
+          const currentPeriodStartStr = format(currentPeriodStart, "yyyy-MM-dd'T'HH:mm:ss'Z'");
+          const previousPeriodStartStr = format(previousPeriodStart, "yyyy-MM-dd'T'HH:mm:ss'Z'");
+          const previousPeriodEndStr = format(previousPeriodEnd, "yyyy-MM-dd'T'HH:mm:ss'Z'");
 
-        setStats([
-          { name: 'Total Patients', value: patientsRes.data.length.toString(), change: '0%', icon: Users },
-          { name: 'Total Appointments', value: appointmentsRes.data.length.toString(), change: '0%', icon: Calendar },
-          { name: 'Active Doctors', value: doctorsRes.data.length.toString(), change: '0%', icon: Activity },
-        ]);
-        setAppointments(appointmentsRes.data.slice(0, 5));
-        setDoctors(doctorsRes.data);
-      } catch (error: any) {
-        console.error('Unexpected error fetching dashboard data:', error);
-        toast.error('Failed to fetch dashboard data');
-      } finally {
-        setLoading(false);
-      }
-    };
+          // Fetch all data (no date filter for patients and doctors, we'll filter on frontend)
+          const [patientsRes, appointmentsRes, doctorsRes] = await Promise.all([
+            api.get('/patients'),
+            api.get('/appointments'),
+            api.get('/doctors'),
+          ]);
 
-    fetchData();
-  }, []);
+          const allPatients: Patient[] = patientsRes.data;
+          const allAppointments: Appointment[] = appointmentsRes.data;
+          const allDoctors: Doctor[] = doctorsRes.data;
+
+          // Filter patients for current and previous periods
+          const currentPatients = allPatients.filter((patient) => {
+            const createdAt = new Date(patient.createdAt);
+            return createdAt >= currentPeriodStart && createdAt <= today;
+          });
+          const previousPatients = allPatients.filter((patient) => {
+            const createdAt = new Date(patient.createdAt);
+            return createdAt >= previousPeriodStart && createdAt <= previousPeriodEnd;
+          });
+
+          // Filter appointments for current and previous periods
+          const currentAppointments = allAppointments.filter((appt) => {
+            const dateTime = new Date(appt.dateTime);
+            return dateTime >= currentPeriodStart && dateTime <= today;
+          });
+          const previousAppointments = allAppointments.filter((appt) => {
+            const dateTime = new Date(appt.dateTime);
+            return dateTime >= previousPeriodStart && dateTime <= previousPeriodEnd;
+          });
+
+          // Filter doctors for current and previous periods
+          const currentDoctors = allDoctors.filter((doctor) => {
+            const createdAt = new Date(doctor.createdAt);
+            return createdAt >= currentPeriodStart && createdAt <= today;
+          });
+          const previousDoctors = allDoctors.filter((doctor) => {
+            const createdAt = new Date(doctor.createdAt);
+            return createdAt >= previousPeriodStart && createdAt <= previousPeriodEnd;
+          });
+
+          // Calculate percentage changes
+          const calculatePercentageChange = (current: number, previous: number): string => {
+            if (previous === 0) {
+              if (current === 0) return '0%';
+              return current > 0 ? '+100%' : '0%'; // Handle edge case
+            }
+            const change = ((current - previous) / previous) * 100;
+            const roundedChange = Number(change.toFixed(2));
+            return `${roundedChange > 0 ? '+' : ''}${roundedChange}%`;
+          };
+
+          const patientsChange = calculatePercentageChange(currentPatients.length, previousPatients.length);
+          const appointmentsChange = calculatePercentageChange(currentAppointments.length, previousAppointments.length);
+          const doctorsChange = calculatePercentageChange(currentDoctors.length, previousDoctors.length);
+
+          // Update stats with total values and percentage changes
+          setStats([
+            { 
+              name: 'Total Patients', 
+              value: allPatients.length.toString(), 
+              change: patientsChange, 
+              icon: Users 
+            },
+            { 
+              name: 'Total Appointments', 
+              value: allAppointments.length.toString(), 
+              change: appointmentsChange, 
+              icon: Calendar 
+            },
+            { 
+              name: 'Active Doctors', 
+              value: allDoctors.length.toString(), 
+              change: doctorsChange, 
+              icon: Activity 
+            },
+          ]);
+
+          // Set recent appointments (last 5)
+          setAppointments(allAppointments.slice(0, 5));
+          setDoctors(allDoctors);
+        } catch (error: any) {
+          console.error('Unexpected error fetching dashboard data:', error);
+          toast.error('Failed to fetch dashboard data');
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchData();
+    }
+  }, [navigate, isAuthenticated]);
 
   return (
     <div className="space-y-6">
+      <Toaster position="top-center" />
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => {
           const Icon = stat.icon;
+          const isPositive = stat.change.startsWith('+') && stat.change !== '+0%';
+          const isNegative = stat.change.startsWith('-');
           return (
             <div
               key={stat.name}
@@ -93,7 +186,11 @@ export default function Dashboard() {
                 <p className="text-2xl font-semibold text-gray-900">
                   {stat.value}
                 </p>
-                <p className="ml-2 flex items-baseline text-sm font-semibold text-green-600">
+                <p
+                  className={`ml-2 flex items-baseline text-sm font-semibold ${
+                    isPositive ? 'text-green-600' : isNegative ? 'text-red-600' : 'text-gray-500'
+                  }`}
+                >
                   {stat.change}
                 </p>
               </dd>

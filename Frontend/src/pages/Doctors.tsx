@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { User, Phone, Mail, Building } from 'lucide-react';
+import { User } from 'lucide-react';
 import api from '../lib/axios';
-import toast from 'react-hot-toast';
+import toast, { Toaster, toast as toastFunc } from 'react-hot-toast';
+import { useAuthStore } from '../stores/authStore';
+import { useNavigate } from 'react-router-dom';
 
 interface Doctor {
   id: number;
@@ -17,22 +19,27 @@ export default function Doctors() {
     name: '',
     specialty: '',
   });
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuthStore();
 
   useEffect(() => {
-    const fetchDoctors = async () => {
-      try {
-        const response = await api.get('/doctors');
-        setDoctors(response.data);
-      } catch (error: any) {
-        console.error('Error fetching doctors:', error);
-        toast.error(error.response?.data?.detail || 'Failed to fetch doctors');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDoctors();
-  }, []);
+    if (!isAuthenticated()) {
+      navigate('/login');
+    } else {
+      const fetchDoctors = async () => {
+        try {
+          const response = await api.get('/doctors');
+          setDoctors(response.data);
+        } catch (error: any) {
+          console.error('Error fetching doctors:', error);
+          toast.error(error.response?.data?.detail || 'Failed to fetch doctors');
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchDoctors();
+    }
+  }, [navigate, isAuthenticated]);
 
   const handleAddDoctor = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,8 +54,49 @@ export default function Doctors() {
     }
   };
 
+  const confirmDelete = (doctorId: number) => {
+    console.log('Delete button clicked for doctor ID:', doctorId);
+    toastFunc((t) => (
+      <div className="bg-white p-4 rounded shadow-lg">
+        <p className="text-gray-700">Are you sure you want to delete this doctor?</p>
+        <div className="mt-4 flex justify-end space-x-2">
+          <button
+            className="px-3 py-1 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
+            onClick={() => {
+              console.log('Cancel delete for doctor ID:', doctorId);
+              toast.dismiss(t.id);
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+            onClick={async () => {
+              try {
+                console.log('Attempting to delete doctor ID:', doctorId);
+                const response = await api.delete(`/doctors/${doctorId}`);
+                console.log('Delete response:', response.data);
+                setDoctors(doctors.filter((doc) => doc.id !== doctorId));
+                toast.success('Doctor deleted successfully');
+              } catch (error: any) {
+                console.error('Delete error:', error.response?.data || error.message);
+                toast.error(error.response?.data?.detail || 'Failed to delete doctor');
+              }
+              toast.dismiss(t.id);
+            }}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    ), {
+      duration: Infinity,
+    });
+  };
+
   return (
     <div className="space-y-6">
+      <Toaster position="top-center" />
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">
           <h1 className="text-2xl font-semibold text-gray-900">Doctors</h1>
@@ -123,14 +171,23 @@ export default function Doctors() {
           doctors.map((doctor) => (
             <div key={doctor.id} className="overflow-hidden rounded-lg bg-white shadow">
               <div className="p-6">
-                <div className="flex items-center">
-                  <div className="h-12 w-12 flex-shrink-0">
-                    <User className="h-12 w-12 text-gray-400" aria-hidden="true" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="h-12 w-12 flex-shrink-0">
+                      <User className="h-12 w-12 text-gray-400" aria-hidden="true" />
+                    </div>
+                    <div className="ml-4">
+                      <h3 className="text-lg font-medium text-gray-900">{doctor.name}</h3>
+                      <p className="text-sm text-gray-500">{doctor.specialty}</p>
+                    </div>
                   </div>
-                  <div className="ml-4">
-                    <h3 className="text-lg font-medium text-gray-900">{doctor.name}</h3>
-                    <p className="text-sm text-gray-500">{doctor.specialty}</p>
-                  </div>
+                  <button
+                    type="button"
+                    className="text-red-600 hover:text-red-900"
+                    onClick={() => confirmDelete(doctor.id)}
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
             </div>

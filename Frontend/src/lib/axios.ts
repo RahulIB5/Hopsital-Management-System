@@ -6,6 +6,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 });
 
 api.interceptors.request.use((config) => {
@@ -19,11 +20,11 @@ api.interceptors.request.use((config) => {
       ? config.data.toString()
       : config.data,
   });
-  const token = useAuthStore.getState().token;
+  const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1] || useAuthStore.getState().token;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   } else {
-    console.warn('No JWT token found in auth store');
+    console.warn('No JWT token found in auth store or cookie');
   }
   return config;
 });

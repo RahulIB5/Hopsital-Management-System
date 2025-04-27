@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Clock, User } from 'lucide-react';
 import api from '../lib/axios';
-import toast from 'react-hot-toast';
+import toast, { Toaster, toast as toastFunc } from 'react-hot-toast';
 import { format } from 'date-fns';
-import { useAuthStore } from '../stores/authStore'; // Import auth store
+import { useAuthStore } from '../stores/authStore';
+import { useNavigate } from 'react-router-dom';
+import { AxiosResponse } from 'axios';
 
 interface Appointment {
   id: number;
@@ -30,82 +32,130 @@ export default function Appointments() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
+    id: 0,
     patientId: '',
     doctorId: '',
     dateTime: '',
     status: 'Scheduled',
   });
+  const [editing, setEditing] = useState(false);
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuthStore();
 
   useEffect(() => {
-    console.log('Current token:', useAuthStore.getState().token);
-    const fetchData = async () => {
-      try {
-        const promises = [
-          api.get('/appointments').catch((err) => ({ error: err, data: [] })),
-          api.get('/patients').catch((err) => ({ error: err, data: [] })),
-          api.get('/doctors').catch((err) => ({ error: err, data: [] })),
-        ];
-        const [appointmentsRes, patientsRes, doctorsRes] = await Promise.all(promises);
-
-        if ('error' in appointmentsRes) {
-          console.error('Appointments fetch error:', appointmentsRes.error);
-          toast.error('Failed to fetch appointments');
-        } else {
+    if (!isAuthenticated()) {
+      navigate('/login');
+    } else {
+      const fetchData = async () => {
+        try {
+          const [appointmentsRes, patientsRes, doctorsRes] = await Promise.all([
+            api.get('/appointments'),
+            api.get('/patients'),
+            api.get('/doctors'),
+          ]);
           setAppointments(appointmentsRes.data);
-        }
-
-        if ('error' in patientsRes) {
-          console.error('Patients fetch error:', patientsRes.error);
-          toast.error('Failed to fetch patients');
-        } else {
           setPatients(patientsRes.data);
-        }
-
-        if ('error' in doctorsRes) {
-          console.error('Doctors fetch error:', doctorsRes.error);
-          toast.error('Failed to fetch doctors');
-        } else {
           setDoctors(doctorsRes.data);
+        } catch (error: any) {
+          console.error('Error fetching data:', error);
+          toast.error(error.response?.data?.detail || 'Failed to fetch data');
+        } finally {
+          setLoading(false);
         }
-      } catch (error: any) {
-        console.error('Unexpected error fetching data:', error);
-        toast.error('Failed to fetch data');
-      } finally {
-        setLoading(false);
-      }
-    };
+      };
+      fetchData();
+    }
+  }, [navigate, isAuthenticated]);
 
-    fetchData();
-  }, []);
-
-  const handleAddAppointment = async (e: React.FormEvent) => {
+  const handleAddOrEditAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const isoDateTime = new Date(formData.dateTime).toISOString();
-      console.log('Sending appointment data:', {
+      const data = {
         patientId: Number(formData.patientId),
         doctorId: Number(formData.doctorId),
         dateTime: isoDateTime,
         status: formData.status,
-      });
-      const response = await api.post('/appointments', {
-        patientId: Number(formData.patientId),
-        doctorId: Number(formData.doctorId),
-        dateTime: isoDateTime,
-        status: formData.status,
-      });
-      setAppointments([...appointments, response.data]);
-      setFormData({ patientId: '', doctorId: '', dateTime: '', status: 'Scheduled' });
+      };
+      console.log('Submitting appointment data:', data);
+      let response: AxiosResponse<any, any>;
+      if (editing) {
+        response = await api.put(`/appointments/${formData.id}`, data);
+        console.log('PUT response:', response.data);
+        setAppointments(appointments.map((app) =>
+          app.id === formData.id ? response.data : app
+        ));
+        toast.success('Appointment updated successfully');
+      } else {
+        response = await api.post('/appointments', data);
+        console.log('POST response:', response.data);
+        setAppointments([...appointments, response.data]);
+        toast.success('Appointment added successfully');
+      }
+      setFormData({ id: 0, patientId: '', doctorId: '', dateTime: '', status: 'Scheduled' });
       setShowForm(false);
-      toast.success('Appointment added successfully');
+      setEditing(false);
     } catch (error: any) {
-      console.error('Error adding appointment:', error);
-      toast.error(error.response?.data?.detail || 'Failed to add appointment');
+      console.error('Error adding/updating appointment:', error.response?.data || error.message);
+      toast.error(error.response?.data?.detail || 'Failed to add/update appointment');
     }
+  };
+
+  const handleEdit = (appointment: Appointment) => {
+    setEditing(true);
+    setShowForm(true);
+    setFormData({
+      id: appointment.id,
+      patientId: appointment.patient?.id.toString() || '',
+      doctorId: appointment.doctor?.id.toString() || '',
+      dateTime: new Date(appointment.dateTime).toISOString().slice(0, -8),
+      status: appointment.status,
+    });
+  };
+
+  const confirmDelete = (appointmentId: number) => {
+    console.log('Delete button clicked for appointment ID:', appointmentId);
+    toastFunc((t) => (
+      <div className="bg-white p-4 rounded shadow-lg">
+        <p className="text-gray-700">Are you sure you want to delete this appointment?</p>
+        <div className="mt-4 flex justify-end space-x-2">
+          <button
+            className="px-3 py-1 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
+            onClick={() => {
+              console.log('Cancel delete for appointment ID:', appointmentId);
+              toast.dismiss(t.id);
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+            onClick={async () => {
+              try {
+                console.log('Attempting to delete appointment ID:', appointmentId);
+                const response = await api.delete(`/appointments/${appointmentId}`);
+                console.log('Delete response:', response.data);
+                setAppointments(appointments.filter((app) => app.id !== appointmentId));
+                toast.success('Appointment deleted successfully');
+              } catch (error: any) {
+                console.error('Delete error:', error.response?.data || error.message);
+                toast.error(error.response?.data?.detail || 'Failed to delete appointment');
+              }
+              toast.dismiss(t.id);
+            }}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    ), {
+      duration: Infinity,
+    });
   };
 
   return (
     <div className="space-y-6">
+      <Toaster position="top-center" />
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">
           <h1 className="text-2xl font-semibold text-gray-900">Appointments</h1>
@@ -117,7 +167,15 @@ export default function Appointments() {
           <button
             type="button"
             className="block rounded-md bg-blue-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-blue-700"
-            onClick={() => setShowForm(!showForm)}
+            onClick={() => {
+              if (isAuthenticated()) {
+                setShowForm(true);
+                setEditing(false);
+                setFormData({ id: 0, patientId: '', doctorId: '', dateTime: '', status: 'Scheduled' });
+              } else {
+                navigate('/login');
+              }
+            }}
           >
             {showForm ? 'Cancel' : 'Add Appointment'}
           </button>
@@ -125,7 +183,7 @@ export default function Appointments() {
       </div>
 
       {showForm && (
-        <form onSubmit={handleAddAppointment} className="mb-4 space-y-4 bg-white p-6 rounded-lg shadow">
+        <form onSubmit={handleAddOrEditAppointment} className="mb-4 space-y-4 bg-white p-6 rounded-lg shadow">
           <div>
             <label className="block text-sm font-medium text-gray-700">Patient</label>
             <select
@@ -135,11 +193,6 @@ export default function Appointments() {
               required
             >
               <option value="">Select Patient</option>
-              {patients.length === 0 && (
-                <option value="" disabled>
-                  No patients available
-                </option>
-              )}
               {patients.map((patient) => (
                 <option key={patient.id} value={patient.id}>
                   {patient.name}
@@ -156,11 +209,6 @@ export default function Appointments() {
               required
             >
               <option value="">Select Doctor</option>
-              {doctors.length === 0 && (
-                <option value="" disabled>
-                  No doctors available
-                </option>
-              )}
               {doctors.map((doctor) => (
                 <option key={doctor.id} value={doctor.id}>
                   {doctor.name}
@@ -194,7 +242,7 @@ export default function Appointments() {
             type="submit"
             className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
           >
-            Submit
+            {editing ? 'Update' : 'Submit'}
           </button>
         </form>
       )}
@@ -209,16 +257,28 @@ export default function Appointments() {
                     <thead className="bg-gray-50">
                       <tr>
                         <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
-                          Patient
+                          <div className="flex items-center">
+                            <User className="mr-2 h-5 w-5 text-gray-400" />
+                            Patient
+                          </div>
                         </th>
                         <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                          Doctor
+                          <div className="flex items-center">
+                            <User className="mr-2 h-5 w-5 text-gray-400" />
+                            Doctor
+                          </div>
                         </th>
                         <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                          Date
+                          <div className="flex items-center">
+                            <Calendar className="mr-2 h-5 w-5 text-gray-400" />
+                            Date
+                          </div>
                         </th>
                         <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                          Status
+                          <div className="flex items-center">
+                            <Clock className="mr-2 h-5 w-5 text-gray-400" />
+                            Status
+                          </div>
                         </th>
                         <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
                           <span className="sr-only">Actions</span>
@@ -256,9 +316,17 @@ export default function Appointments() {
                             <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                               <button
                                 type="button"
-                                className="text-blue-600 hover:text-blue-900"
+                                className="text-blue-600 hover:text-blue-900 mr-2"
+                                onClick={() => handleEdit(appointment)}
                               >
                                 Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="text-red-600 hover:text-red-900"
+                                onClick={() => confirmDelete(appointment.id)}
+                              >
+                                Delete
                               </button>
                             </td>
                           </tr>

@@ -27,7 +27,6 @@ CREATE TABLE "Appointment" (
     "doctorId" INTEGER NOT NULL,
     "dateTime" TIMESTAMP(3) NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'Scheduled',
-
     CONSTRAINT "Appointment_pkey" PRIMARY KEY ("id")
 );
 
