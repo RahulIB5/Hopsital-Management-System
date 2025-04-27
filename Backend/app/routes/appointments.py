@@ -2,17 +2,19 @@ from fastapi import APIRouter, Depends, HTTPException
 from prisma import Prisma
 from pydantic import BaseModel
 from ..database import get_db
+from ..routes.auth import get_current_active_user
 from datetime import datetime
+import logging
 
-# This module defines the API routes for managing appointments in the healthcare system.
-# It includes endpoints for creating, retrieving, updating, and deleting appointments,
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 
 class AppointmentCreate(BaseModel):
     patientId: int
     doctorId: int
-    dateTime: str  # ISO datetime, e.g., "2025-04-12T10:00:00Z"
+    dateTime: str
     status: str = "Scheduled"
 
 class AppointmentUpdate(BaseModel):
@@ -20,78 +22,136 @@ class AppointmentUpdate(BaseModel):
     status: str | None
 
 @router.post("/", status_code=201)
-async def create_appointment(appointment: AppointmentCreate, db: Prisma = Depends(get_db)):
-    """Schedule a new appointment."""
-    # Validate patient and doctor exist
-    patient = await db.patient.find_unique(where={"id": appointment.patientId})
-    doctor = await db.doctor.find_unique(where={"id": appointment.doctorId})
-    if not patient or not doctor:
-        raise HTTPException(status_code=400, detail="Invalid patient or doctor ID")
-    return await db.appointment.create(
-        data={
-            "patientId": appointment.patientId,
-            "doctorId": appointment.doctorId,
-            "dateTime": appointment.dateTime,
-            "status": appointment.status,
-        }
-    )
+async def create_appointment(
+    appointment: AppointmentCreate,
+    db: Prisma = Depends(get_db),
+    current_user=Depends(get_current_active_user)
+):
+    logger.debug(f"Creating appointment with data: {appointment}")
+    try:
+        patient = await db.patient.find_unique(where={"id": appointment.patientId})
+        doctor = await db.doctor.find_unique(where={"id": appointment.doctorId})
+        logger.debug(f"Patient: {patient}, Doctor: {doctor}")
+        if not patient or not doctor:
+            raise HTTPException(status_code=400, detail="Invalid patient or doctor ID")
+        
+        try:
+            parsed_date = datetime.fromisoformat(appointment.dateTime.replace("Z", "+00:00"))
+            logger.debug(f"Parsed dateTime: {parsed_date}")
+        except ValueError as e:
+            logger.error(f"Invalid dateTime format: {e}")
+            raise HTTPException(status_code=400, detail="Invalid dateTime format, expected ISO 8601 (e.g., 2025-04-12T10:00:00Z)")
+
+        new_appointment = await db.appointment.create(
+            data={
+                "patientId": appointment.patientId,
+                "doctorId": appointment.doctorId,
+                "dateTime": parsed_date.isoformat(),
+                "status": appointment.status,
+            }
+        )
+        logger.debug(f"Created appointment: {new_appointment}")
+        return new_appointment
+    except Exception as e:
+        logger.error(f"Error creating appointment: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @router.get("/{appointment_id}")
-async def get_appointment(appointment_id: int, db: Prisma = Depends(get_db)):
-    """Retrieve an appointment by ID with patient and doctor details."""
-    appointment = await db.appointment.find_unique(
-        where={"id": appointment_id},
-        include={"patient": True, "doctor": True}
-    )
-    if not appointment:
-        raise HTTPException(status_code=404, detail="Appointment not found")
-    return appointment
+async def get_appointment(
+    appointment_id: int,
+    db: Prisma = Depends(get_db),
+    current_user=Depends(get_current_active_user)
+):
+    logger.debug(f"Fetching appointment with ID: {appointment_id}")
+    try:
+        appointment = await db.appointment.find_unique(
+            where={"id": appointment_id},
+            include={"patient": True, "doctor": True}
+        )
+        if not appointment or not appointment.patient or not appointment.doctor:
+            raise HTTPException(status_code=404, detail="Appointment or related data not found")
+        return appointment
+    except Exception as e:
+        logger.error(f"Error fetching appointment {appointment_id}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @router.get("/")
 async def list_appointments(
     patient_id: int | None = None,
     doctor_id: int | None = None,
-    date: str | None = None,  # ISO date, e.g., "2025-04-12"
+    date: str | None = None,
     skip: int = 0,
     limit: int = 10,
-    db: Prisma = Depends(get_db)
+    db: Prisma = Depends(get_db),
+    current_user=Depends(get_current_active_user)
 ):
-    """List appointments with filters for patient, doctor, or date."""
-    where = {}
-    if patient_id:
-        where["patientId"] = patient_id
-    if doctor_id:
-        where["doctorId"] = doctor_id
-    if date:
-        start = datetime.fromisoformat(date.replace("Z", "+00:00")).replace(hour=0, minute=0)
-        end = start.replace(hour=23, minute=59)
-        where["dateTime"] = {"gte": start, "lte": end}
-    return await db.appointment.find_many(
-        where=where,
-        include={"patient": True, "doctor": True},
-        skip=skip,
-        take=limit,
-        order={"dateTime": "asc"}
-    )
+    logger.debug(f"Listing appointments with filters: patient_id={patient_id}, doctor_id={doctor_id}, date={date}")
+    try:
+        logger.debug("Building query filters")
+        where = {}
+        if patient_id:
+            where["patientId"] = patient_id
+        if doctor_id:
+            where["doctorId"] = doctor_id
+        if date:
+            logger.debug(f"Parsing date: {date}")
+            start = datetime.fromisoformat(date.replace("Z", "+00:00")).replace(hour=0, minute=0)
+            end = start.replace(hour=23, minute=59)
+            where["dateTime"] = {"gte": start, "lte": end}
+        
+        logger.debug("Executing Prisma query")
+        appointments = await db.appointment.find_many(
+            where=where,
+            include={"patient": True, "doctor": True},
+            skip=skip,
+            take=limit,
+            order={"dateTime": "asc"}
+        )
+        logger.debug(f"Retrieved {len(appointments)} appointments")
+        
+        logger.debug("Filtering valid appointments")
+        valid_appointments = [appt for appt in appointments if appt.patient and appt.doctor]
+        logger.debug(f"Returning {len(valid_appointments)} valid appointments")
+        return valid_appointments
+    except Exception as e:
+        logger.error(f"Error listing appointments: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @router.put("/{appointment_id}")
-async def update_appointment(appointment_id: int, appointment: AppointmentUpdate, db: Prisma = Depends(get_db)):
-    """Update appointment details (e.g., reschedule or change status)."""
-    existing = await db.appointment.find_unique(where={"id": appointment_id})
-    if not existing:
-        raise HTTPException(status_code=404, detail="Appointment not found")
-    return await db.appointment.update(
-        where={"id": appointment_id},
-        data={
-            "dateTime": appointment.dateTime,
-            "status": appointment.status,
-        }
-    )
+async def update_appointment(
+    appointment_id: int,
+    appointment: AppointmentUpdate,
+    db: Prisma = Depends(get_db),
+    current_user=Depends(get_current_active_user)
+):
+    logger.debug(f"Updating appointment {appointment_id} with data: {appointment}")
+    try:
+        existing = await db.appointment.find_unique(where={"id": appointment_id})
+        if not existing:
+            raise HTTPException(status_code=404, detail="Appointment not found")
+        return await db.appointment.update(
+            where={"id": appointment_id},
+            data={
+                "dateTime": appointment.dateTime,
+                "status": appointment.status,
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error updating appointment {appointment_id}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @router.delete("/{appointment_id}")
-async def cancel_appointment(appointment_id: int, db: Prisma = Depends(get_db)):
-    """Cancel an appointment."""
-    existing = await db.appointment.find_unique(where={"id": appointment_id})
-    if not existing:
-        raise HTTPException(status_code=404, detail="Appointment not found")
-    return await db.appointment.delete(where={"id": appointment_id})
+async def cancel_appointment(
+    appointment_id: int,
+    db: Prisma = Depends(get_db),
+    current_user=Depends(get_current_active_user)
+):
+    logger.debug(f"Deleting appointment {appointment_id}")
+    try:
+        existing = await db.appointment.find_unique(where={"id": appointment_id})
+        if not existing:
+            raise HTTPException(status_code=404, detail="Appointment not found")
+        return await db.appointment.delete(where={"id": appointment_id})
+    except Exception as e:
+        logger.error(f"Error deleting appointment {appointment_id}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")

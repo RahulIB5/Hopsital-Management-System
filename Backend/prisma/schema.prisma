@@ -28,15 +28,16 @@ model MedicalHistory {
 }
 
 model Appointment {
-  id          Int      @id @default(autoincrement())
-  patientId   Int
-  patient     Patient  @relation(fields: [patientId], references: [id])
-  doctorId    Int
-  doctor      Doctor   @relation(fields: [doctorId], references: [id])
-  dateTime    DateTime
-  status      String   @default("Scheduled")
+  id        Int      @id @default(autoincrement())
+  patientId Int
+  doctorId  Int
+  dateTime  DateTime
+  status    String
+  patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
-
 model Doctor {
   id          Int      @id @default(autoincrement())
   name        String

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from prisma import Prisma
 from pydantic import BaseModel
 from ..database import get_db
+from ..routes.auth import get_current_active_user  # Import auth dependency
 
 router = APIRouter(prefix="/patients", tags=["patients"])
 
@@ -9,7 +10,7 @@ class PatientCreate(BaseModel):
     name: str
     email: str
     phone: str | None
-    dob: str  # ISO date, e.g., "1990-01-01"
+    dob: str
 
 class PatientUpdate(BaseModel):
     name: str | None
@@ -17,8 +18,11 @@ class PatientUpdate(BaseModel):
     dob: str | None
 
 @router.post("/", status_code=201)
-async def create_patient(patient: PatientCreate, db: Prisma = Depends(get_db)):
-    """Create a new patient record."""
+async def create_patient(
+    patient: PatientCreate,
+    db: Prisma = Depends(get_db),
+    current_user=Depends(get_current_active_user)  # Add auth
+):
     existing = await db.patient.find_unique(where={"email": patient.email})
     if existing:
         raise HTTPException(status_code=400, detail="Email already exists")
@@ -32,8 +36,11 @@ async def create_patient(patient: PatientCreate, db: Prisma = Depends(get_db)):
     )
 
 @router.get("/{patient_id}")
-async def get_patient(patient_id: int, db: Prisma = Depends(get_db)):
-    """Retrieve a patient by ID, including medical history and appointments."""
+async def get_patient(
+    patient_id: int,
+    db: Prisma = Depends(get_db),
+    current_user=Depends(get_current_active_user)
+):
     patient = await db.patient.find_unique(
         where={"id": patient_id},
         include={"medicalHistory": True, "appointments": True}
@@ -48,9 +55,9 @@ async def list_patients(
     email: str | None = None,
     skip: int = 0,
     limit: int = 10,
-    db: Prisma = Depends(get_db)
+    db: Prisma = Depends(get_db),
+    current_user=Depends(get_current_active_user)
 ):
-    """List patients with optional name or email filters."""
     where = {}
     if name:
         where["name"] = {"contains": name}
@@ -64,8 +71,12 @@ async def list_patients(
     )
 
 @router.put("/{patient_id}")
-async def update_patient(patient_id: int, patient: PatientUpdate, db: Prisma = Depends(get_db)):
-    """Update patient details."""
+async def update_patient(
+    patient_id: int,
+    patient: PatientUpdate,
+    db: Prisma = Depends(get_db),
+    current_user=Depends(get_current_active_user)
+):
     existing = await db.patient.find_unique(where={"id": patient_id})
     if not existing:
         raise HTTPException(status_code=404, detail="Patient not found")
@@ -79,8 +90,11 @@ async def update_patient(patient_id: int, patient: PatientUpdate, db: Prisma = D
     )
 
 @router.delete("/{patient_id}")
-async def delete_patient(patient_id: int, db: Prisma = Depends(get_db)):
-    """Delete a patient record."""
+async def delete_patient(
+    patient_id: int,
+    db: Prisma = Depends(get_db),
+    current_user=Depends(get_current_active_user)
+):
     existing = await db.patient.find_unique(where={"id": patient_id})
     if not existing:
         raise HTTPException(status_code=404, detail="Patient not found")
