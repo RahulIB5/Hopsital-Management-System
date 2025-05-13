@@ -33,6 +33,7 @@ model Appointment {
   doctorId  Int
   dateTime  DateTime
   status    String
+  purpose   String?
   patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
   doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
 }

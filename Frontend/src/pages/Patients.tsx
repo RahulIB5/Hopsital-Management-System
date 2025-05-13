@@ -91,11 +91,11 @@ export default function Patients() {
   const confirmDelete = (patientId: number) => {
     console.log('Delete button clicked for patient ID:', patientId);
     toastFunc((t) => (
-      <div className="bg-white p-4 rounded shadow-lg">
+      <div className="bg-white p-4 rounded-lg shadow-lg transform transition-all duration-300 ease-in-out">
         <p className="text-gray-700">Are you sure you want to delete this patient?</p>
         <div className="mt-4 flex justify-end space-x-2">
           <button
-            className="px-3 py-1 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
+            className="px-3 py-1 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors duration-300 ease-in-out transform hover:scale-105"
             onClick={() => {
               console.log('Cancel delete for patient ID:', patientId);
               toast.dismiss(t.id);
@@ -104,7 +104,7 @@ export default function Patients() {
             Cancel
           </button>
           <button
-            className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+            className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-300 ease-in-out transform hover:scale-105"
             onClick={async () => {
               try {
                 console.log('Attempting to delete patient ID:', patientId);
@@ -129,7 +129,7 @@ export default function Patients() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-100 via-white to-blue-100 py-6 space-y-6">
       <Toaster position="top-center" />
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">
@@ -141,11 +141,10 @@ export default function Patients() {
         <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
           <button
             type="button"
-            className="block rounded-md bg-blue-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-blue-700"
+            className="block rounded-lg bg-blue-600 px-4 py-2 text-center text-sm font-semibold text-white shadow-md hover:bg-blue-700 transition-all duration-300 ease-in-out transform hover:scale-105"
             onClick={() => {
-              setShowForm(true);
+              setShowForm(!showForm);
               setEditing(false);
-              setFormData({ id: 0, name: '', email: '', phone: '', dob: '' });
             }}
           >
             {showForm ? 'Cancel' : 'Add Patient'}
@@ -154,14 +153,18 @@ export default function Patients() {
       </div>
 
       {showForm && (
-        <form onSubmit={handleAddOrEditPatient} className="mb-4 space-y-4 bg-white p-6 rounded-lg shadow">
+        <form
+          onSubmit={handleAddOrEditPatient}
+          className="mb-6 space-y-4 bg-white p-6 rounded-xl shadow-lg transform transition-all duration-500 ease-in-out opacity-0 translate-y-4"
+          style={{ animation: 'fadeInUp 0.5s forwards' }}
+        >
           <div>
             <label className="block text-sm font-medium text-gray-700">Name</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+              className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 ease-in-out"
               required
             />
           </div>
@@ -171,7 +174,7 @@ export default function Patients() {
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+              className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 ease-in-out"
               required
               disabled={editing}
             />
@@ -182,7 +185,7 @@ export default function Patients() {
               type="text"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+              className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 ease-in-out"
             />
           </div>
           <div>
@@ -191,99 +194,155 @@ export default function Patients() {
               type="date"
               value={formData.dob}
               onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+              className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 ease-in-out"
               required
             />
           </div>
           <button
             type="submit"
-            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
+            className="bg-green-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-700 transition-all duration-300 ease-in-out transform hover:scale-105"
           >
             {editing ? 'Update' : 'Submit'}
           </button>
         </form>
       )}
 
-      <div className="flex flex-col">
-        <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-          <div className="inline-block min-w-full py-2 align-middle">
-            <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
-              <table className="min-w-full divide-y divide-gray-300">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
-                      <div className="flex items-center">
-                        <User className="mr-2 h-5 w-5 text-gray-400" />
-                        Name
-                      </div>
-                    </th>
-                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                      Email
-                    </th>
-                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                      Phone
-                    </th>
-                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                      Date of Birth
-                    </th>
-                    <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                      <span className="sr-only">Actions</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
-                  {loading ? (
-                    <tr>
-                      <td colSpan={5} className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-500 sm:pl-6">
-                        Loading patients...
-                      </td>
-                    </tr>
-                  ) : patients.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-500 sm:pl-6">
-                        No patients found
-                      </td>
-                    </tr>
-                  ) : (
-                    patients.map((patient) => (
-                      <tr key={patient.id}>
-                        <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                          {patient.name}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                          {patient.email}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                          {patient.phone || '-'}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                          {format(new Date(patient.dob), 'MMM d, yyyy')}
-                        </td>
-                        <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                          <button
-                            type="button"
-                            className="text-blue-600 hover:text-blue-900 mr-2"
-                            onClick={() => handleEdit(patient)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            className="text-red-600 hover:text-red-900"
-                            onClick={() => confirmDelete(patient.id)}
-                          >
-                            Delete
-                          </button>
-                        </td>
+      <div className="overflow-hidden rounded-xl bg-white shadow-lg">
+        <div className="p-6">
+          <div className="flex flex-col">
+            <div className="overflow-x-auto">
+              <div className="inline-block min-w-full py-2 align-middle">
+                <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
+                  <table className="min-w-full divide-y divide-gray-300">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
+                          <div className="flex items-center">
+                            <User className="mr-2 h-5 w-5 text-gray-400 transition-transform duration-300 ease-in-out hover:scale-110" />
+                            Name
+                          </div>
+                        </th>
+                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                          Email
+                        </th>
+                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                          Phone
+                        </th>
+                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                          Date of Birth
+                        </th>
+                        <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                          <span className="sr-only">Actions</span>
+                        </th>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 bg-white">
+                      {loading ? (
+                        <tr>
+                          <td colSpan={5} className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-500 sm:pl-6">
+                            <div className="flex items-center justify-center space-x-2">
+                              <svg
+                                className="animate-spin h-5 w-5 text-blue-600"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                              >
+                                <circle
+                                  className="opacity-25"
+                                  cx="12"
+                                  cy="12"
+                                  r="10"
+                                  stroke="currentColor"
+                                  strokeWidth="4"
+                                />
+                                <path
+                                  className="opacity-75"
+                                  fill="currentColor"
+                                  d="M4 12a8 8 0 018-8v8H4z"
+                                />
+                              </svg>
+                              <span>Loading patients...</span>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : patients.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-500 sm:pl-6">
+                            No patients found
+                          </td>
+                        </tr>
+                      ) : (
+                        patients.map((patient, index) => (
+                          <tr
+                            key={patient.id}
+                            className="transition-all duration-500 ease-in-out transform hover:bg-blue-50 hover:shadow-md"
+                            style={{ animation: `fadeIn 0.5s ease-in-out ${index * 0.1}s forwards`, opacity: 0 }}
+                          >
+                            <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
+                              {patient.name}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                              {patient.email}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                              {patient.phone || '-'}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                              {format(new Date(patient.dob), 'MMM d, yyyy')}
+                            </td>
+                            <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                              <button
+                                type="button"
+                                className="text-blue-600 hover:text-blue-800 mr-4 transition-colors duration-300 ease-in-out transform hover:scale-105"
+                                onClick={() => handleEdit(patient)}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="text-red-600 hover:text-red-800 transition-colors duration-300 ease-in-out transform hover:scale-105"
+                                onClick={() => confirmDelete(patient.id)}
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Custom CSS for Animations */}
+      <style>
+        {`
+          @keyframes fadeIn {
+            from {
+              opacity: 0;
+              transform: translateY(10px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+          @keyframes fadeInUp {
+            from {
+              opacity: 0;
+              transform: translateY(10px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+        `}
+      </style>
     </div>
   );
 }

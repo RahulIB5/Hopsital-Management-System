@@ -21,7 +21,7 @@ interface Doctor {
   id: number;
   name: string;
   specialty: string;
-  createdAt: string; // Assuming this field exists
+  createdAt: string;
 }
 
 interface Patient {
@@ -30,14 +30,14 @@ interface Patient {
   email: string;
   phone: string | null;
   dob: string;
-  createdAt: string; // Assuming this field exists
+  createdAt: string;
 }
 
 interface Stat {
   name: string;
   value: string;
   change: string;
-  icon: React.ComponentType<any>; // Use a more permissive type or import LucideProps from lucide-react
+  icon: React.ComponentType<any>;
 }
 
 export default function Dashboard() {
@@ -58,18 +58,15 @@ export default function Dashboard() {
     } else {
       const fetchData = async () => {
         try {
-          // Define date ranges
           const today = new Date();
-          const currentPeriodStart = subDays(today, 30); // Last 30 days
-          const previousPeriodStart = subDays(today, 60); // 60 to 30 days ago
+          const currentPeriodStart = subDays(today, 30);
+          const previousPeriodStart = subDays(today, 60);
           const previousPeriodEnd = subDays(today, 31);
 
-          // Format dates for API queries (ISO 8601)
           const currentPeriodStartStr = format(currentPeriodStart, "yyyy-MM-dd'T'HH:mm:ss'Z'");
           const previousPeriodStartStr = format(previousPeriodStart, "yyyy-MM-dd'T'HH:mm:ss'Z'");
           const previousPeriodEndStr = format(previousPeriodEnd, "yyyy-MM-dd'T'HH:mm:ss'Z'");
 
-          // Fetch all data (no date filter for patients and doctors, we'll filter on frontend)
           const [patientsRes, appointmentsRes, doctorsRes] = await Promise.all([
             api.get('/patients'),
             api.get('/appointments'),
@@ -80,7 +77,6 @@ export default function Dashboard() {
           const allAppointments: Appointment[] = appointmentsRes.data;
           const allDoctors: Doctor[] = doctorsRes.data;
 
-          // Filter patients for current and previous periods
           const currentPatients = allPatients.filter((patient) => {
             const createdAt = new Date(patient.createdAt);
             return createdAt >= currentPeriodStart && createdAt <= today;
@@ -90,7 +86,6 @@ export default function Dashboard() {
             return createdAt >= previousPeriodStart && createdAt <= previousPeriodEnd;
           });
 
-          // Filter appointments for current and previous periods
           const currentAppointments = allAppointments.filter((appt) => {
             const dateTime = new Date(appt.dateTime);
             return dateTime >= currentPeriodStart && dateTime <= today;
@@ -100,7 +95,6 @@ export default function Dashboard() {
             return dateTime >= previousPeriodStart && dateTime <= previousPeriodEnd;
           });
 
-          // Filter doctors for current and previous periods
           const currentDoctors = allDoctors.filter((doctor) => {
             const createdAt = new Date(doctor.createdAt);
             return createdAt >= currentPeriodStart && createdAt <= today;
@@ -110,11 +104,10 @@ export default function Dashboard() {
             return createdAt >= previousPeriodStart && createdAt <= previousPeriodEnd;
           });
 
-          // Calculate percentage changes
           const calculatePercentageChange = (current: number, previous: number): string => {
             if (previous === 0) {
               if (current === 0) return '0%';
-              return current > 0 ? '+100%' : '0%'; // Handle edge case
+              return current > 0 ? '+100%' : '0%';
             }
             const change = ((current - previous) / previous) * 100;
             const roundedChange = Number(change.toFixed(2));
@@ -125,7 +118,6 @@ export default function Dashboard() {
           const appointmentsChange = calculatePercentageChange(currentAppointments.length, previousAppointments.length);
           const doctorsChange = calculatePercentageChange(currentDoctors.length, previousDoctors.length);
 
-          // Update stats with total values and percentage changes
           setStats([
             { 
               name: 'Total Patients', 
@@ -147,7 +139,6 @@ export default function Dashboard() {
             },
           ]);
 
-          // Set recent appointments (last 5)
           setAppointments(allAppointments.slice(0, 5));
           setDoctors(allDoctors);
         } catch (error: any) {
@@ -162,21 +153,22 @@ export default function Dashboard() {
   }, [navigate, isAuthenticated]);
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-100 via-white to-blue-100 py-6 space-y-6">
       <Toaster position="top-center" />
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {stats.map((stat) => {
+        {stats.map((stat, index) => {
           const Icon = stat.icon;
           const isPositive = stat.change.startsWith('+') && stat.change !== '+0%';
           const isNegative = stat.change.startsWith('-');
           return (
             <div
               key={stat.name}
-              className="relative overflow-hidden rounded-lg bg-white px-4 pb-12 pt-5 shadow sm:px-6 sm:pt-6"
+              className="relative overflow-hidden rounded-lg bg-white px-4 pb-12 pt-5 shadow-lg sm:px-6 sm:pt-6 transition-all duration-500 ease-in-out transform hover:shadow-xl hover:scale-105"
+              style={{ animation: `fadeIn 0.5s ease-in-out ${index * 0.1}s forwards`, opacity: 0 }}
             >
               <dt>
                 <div className="absolute rounded-md bg-blue-500 p-3">
-                  <Icon className="h-6 w-6 text-white" aria-hidden="true" />
+                  <Icon className="h-6 w-6 text-white transition-transform duration-300 ease-in-out hover:scale-110" aria-hidden="true" />
                 </div>
                 <p className="ml-16 truncate text-sm font-medium text-gray-500">
                   {stat.name}
@@ -186,13 +178,13 @@ export default function Dashboard() {
                 <p className="text-2xl font-semibold text-gray-900">
                   {stat.value}
                 </p>
-                <p
+                {/* <p
                   className={`ml-2 flex items-baseline text-sm font-semibold ${
                     isPositive ? 'text-green-600' : isNegative ? 'text-red-600' : 'text-gray-500'
                   }`}
                 >
                   {stat.change}
-                </p>
+                </p> */}
               </dd>
             </div>
           );
@@ -200,7 +192,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="overflow-hidden rounded-lg bg-white shadow">
+        <div className="overflow-hidden rounded-lg bg-white shadow-lg">
           <div className="p-6">
             <h3 className="text-lg font-medium leading-6 text-gray-900">
               Recent Appointments
@@ -211,7 +203,29 @@ export default function Dashboard() {
                   <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
                     <div className="overflow-hidden border-b border-gray-200">
                       {loading ? (
-                        <p className="text-sm text-gray-500 p-4">Loading appointments...</p>
+                        <div className="flex items-center justify-center space-x-2 p-4">
+                          <svg
+                            className="animate-spin h-5 w-5 text-blue-600"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8v8H4z"
+                            />
+                          </svg>
+                          <p className="text-sm text-gray-500">Loading appointments...</p>
+                        </div>
                       ) : appointments.length === 0 ? (
                         <p className="text-sm text-gray-500 p-4">No recent appointments</p>
                       ) : (
@@ -224,8 +238,12 @@ export default function Dashboard() {
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
-                            {appointments.map((appointment) => (
-                              <tr key={appointment.id}>
+                            {appointments.map((appointment, index) => (
+                              <tr
+                                key={appointment.id}
+                                className="transition-all duration-500 ease-in-out transform hover:bg-blue-50 hover:shadow-md"
+                                style={{ animation: `fadeIn 0.5s ease-in-out ${index * 0.1}s forwards`, opacity: 0 }}
+                              >
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                   {appointment.patient ? appointment.patient.name : 'Unknown Patient'}
                                 </td>
@@ -248,7 +266,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-lg bg-white shadow">
+        <div className="overflow-hidden rounded-lg bg-white shadow-lg">
           <div className="p-6">
             <h3 className="text-lg font-medium leading-6 text-gray-900">
               Doctor Availability
@@ -259,7 +277,29 @@ export default function Dashboard() {
                   <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
                     <div className="overflow-hidden border-b border-gray-200">
                       {loading ? (
-                        <p className="text-sm text-gray-500 p-4">Loading doctor schedules...</p>
+                        <div className="flex items-center justify-center space-x-2 p-4">
+                          <svg
+                            className="animate-spin h-5 w-5 text-blue-600"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8v8H4z"
+                            />
+                          </svg>
+                          <p className="text-sm text-gray-500">Loading doctor schedules...</p>
+                        </div>
                       ) : doctors.length === 0 ? (
                         <p className="text-sm text-gray-500 p-4">No doctors available</p>
                       ) : (
@@ -270,9 +310,13 @@ export default function Dashboard() {
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Specialty</th>
                             </tr>
                           </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {doctors.map((doctor) => (
-                              <tr key={doctor.id}>
+                          <tbody className="bg-white divide-y divide-gradient-200">
+                            {doctors.map((doctor, index) => (
+                              <tr
+                                key={doctor.id}
+                                className="transition-all duration-500 ease-in-out transform hover:bg-blue-50 hover:shadow-md"
+                                style={{ animation: `fadeIn 0.5s ease-in-out ${index * 0.1}s forwards`, opacity: 0 }}
+                              >
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                   {doctor.name}
                                 </td>
@@ -292,6 +336,22 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Custom CSS for Animations */}
+      <style>
+        {`
+          @keyframes fadeIn {
+            from {
+              opacity: 0;
+              transform: translateY(10px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+        `}
+      </style>
     </div>
   );
 }

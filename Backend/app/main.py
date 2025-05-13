@@ -2,6 +2,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .routes import patients, appointments, doctors, medical_histories, auth, users
 from .database import get_db
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 app = FastAPI(
     title="Healthcare Patient Management System (HPMS)",

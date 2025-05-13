@@ -5,6 +5,7 @@ from prisma import Prisma
 from ..database import get_db
 from passlib.context import CryptContext
 import jwt
+import json
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -14,7 +15,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 SECRET_KEY = "your-secret-key"  # Replace with a secure key and use env vars
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 24 * 30
 
 class UserResponse(BaseModel):
     id: int
@@ -24,6 +25,37 @@ class UserResponse(BaseModel):
 class Token(BaseModel):
     token: str
     user: UserResponse
+
+class UserCreate(BaseModel):
+    email: str
+    password: str
+    role: str
+
+@router.post("/register", response_model=UserResponse)
+async def register_user(user: UserCreate, db: Prisma = Depends(get_db)):
+    # Check if user already exists
+    existing_user = await db.user.find_unique(where={"email": user.email})
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
+
+    # Hash the password
+    hashed_password = pwd_context.hash(user.password)
+
+    # Create the user
+    new_user = await db.user.create({
+        "email": user.email,
+        "password": hashed_password,
+        "role": user.role
+    })
+
+    return {
+        "id": new_user.id,
+        "email": new_user.email,
+        "role": new_user.role
+    }
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -61,7 +93,17 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Prisma = D
         data={"sub": user.email, "role": user.role, "user_id": user.id},
         expires_delta=access_token_expires
     )
-    response = Response(content="Login successful")
+    response = Response(
+        content=json.dumps({
+            "token": access_token,
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "role": user.role
+            }
+        }),
+        media_type="application/json"
+    )
     response.set_cookie(
         key="token",
         value=access_token,
@@ -70,14 +112,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Prisma = D
         max_age=1800,  # 30 minutes
         samesite="lax"
     )
-    return {
-        "token": access_token,
-        "user": {
-            "id": user.id,
-            "email": user.email,
-            "role": user.role
-        }
-    }
+    return response
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Prisma = Depends(get_db)):
     credentials_exception = HTTPException(

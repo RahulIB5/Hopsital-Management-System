@@ -4,9 +4,10 @@ import {
   Calendar, 
   Users, 
   UserRound,
-  Menu
+  Menu,
+  X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -15,30 +16,56 @@ const navigation = [
   { name: 'Patients', href: '/patients', icon: UserRound },
 ];
 
-export default function Sidebar() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+interface SidebarProps {
+  isOpen: boolean;
+  setIsOpen: (isOpen: boolean) => void;
+}
+
+export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const location = useLocation();
+  const sidebarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    console.log('Sidebar isOpen state:', isOpen);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        isOpen &&
+        sidebarRef.current &&
+        !sidebarRef.current.contains(event.target as Node)
+      ) {
+        console.log('Clicked outside sidebar, closing mobile menu');
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen, setIsOpen]);
 
   return (
     <>
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center gap-x-6 bg-white px-4 py-4 shadow-sm">
-        <button
-          type="button"
-          className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
-          onClick={() => setIsMobileMenuOpen(true)}
-        >
-          <span className="sr-only">Open sidebar</span>
-          <Menu className="h-6 w-6" aria-hidden="true" />
-        </button>
-        <div className="flex-1 text-sm font-semibold leading-6 text-gray-900">
-          Medical Dashboard
-        </div>
-      </div>
-
-      <div className={`${isMobileMenuOpen ? '' : 'hidden'} lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col`}>
-        <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-4 border-r border-gray-200">
-          <div className="flex h-16 shrink-0 items-center">
+      <div
+        ref={sidebarRef}
+        className={`fixed inset-y-0 z-50 flex flex-col transition-transform duration-300 ease-in-out bg-white shadow-lg border-r border-gray-200 ${
+          isOpen ? 'translate-x-0 w-72' : '-translate-x-full w-0'
+        } overflow-y-auto`}
+      >
+        <div className="flex grow flex-col gap-y-5 px-6 pb-4">
+          <div className="flex h-16 shrink-0 items-center justify-between">
             <span className="text-xl font-bold text-gray-900">Medical Dashboard</span>
+            <button
+              type="button"
+              className="-m-2.5 p-2.5 text-gray-700 hover:text-blue-600 transition-colors duration-300 ease-in-out"
+              onClick={() => {
+                console.log('Closing mobile menu via close button');
+                setIsOpen(false);
+              }}
+            >
+              <span className="sr-only">Close sidebar</span>
+              <X className="h-6 w-6" aria-hidden="true" />
+            </button>
           </div>
           <nav className="flex flex-1 flex-col">
             <ul role="list" className="flex flex-1 flex-col gap-y-7">
@@ -53,16 +80,22 @@ export default function Sidebar() {
                           to={item.href}
                           className={`
                             group flex gap-x-3 rounded-md p-2 text-sm leading-6
-                            ${isActive 
-                              ? 'bg-gray-50 text-blue-600' 
-                              : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
-                            }
-                          `}
-                          onClick={() => setIsMobileMenuOpen(false)}
+                            ${
+                              isActive
+                                ? 'bg-gray-50 text-blue-600'
+                                : 'text-gray-700 hover:text-blue-600 hover:bg-gray-100'
+                            } transition-all duration-300 ease-in-out transform hover:scale-105`
+                          }
+                          onClick={() => {
+                            console.log(`Navigating to ${item.href}, closing mobile menu`);
+                            setIsOpen(false);
+                          }}
                         >
-                          <Icon 
-                            className={`h-6 w-6 shrink-0 ${isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-blue-600'}`} 
-                            aria-hidden="true" 
+                          <Icon
+                            className={`h-6 w-6 shrink-0 ${
+                              isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-blue-600'
+                            } transition-colors duration-300 ease-in-out`}
+                            aria-hidden="true"
                           />
                           {item.name}
                         </Link>
@@ -75,6 +108,16 @@ export default function Sidebar() {
           </nav>
         </div>
       </div>
+
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black bg-opacity-50 transition-opacity duration-300 ease-in-out"
+          onClick={() => {
+            console.log('Clicked overlay, closing mobile menu');
+            setIsOpen(false);
+          }}
+        />
+      )}
     </>
   );
 }
