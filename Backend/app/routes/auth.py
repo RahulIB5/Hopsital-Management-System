@@ -15,7 +15,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 SECRET_KEY = "your-secret-key"  # Replace with a secure key and use env vars
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 24 * 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 7 * 24 * 60
 
 class UserResponse(BaseModel):
     id: int
@@ -109,7 +109,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Prisma = D
         value=access_token,
         httponly=True,
         secure=False,  # Set to True in production with HTTPS
-        max_age=1800,  # 30 minutes
+        max_age=7 * 24 * 60 * 60,  # 7 days
         samesite="lax"
     )
     return response

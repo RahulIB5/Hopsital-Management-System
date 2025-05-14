@@ -192,7 +192,7 @@ export default function Appointments() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white via-blue to-blue-200 py-6 space-y-6">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white via-blue to-blue-100 py-6 space-y-6">
       <Toaster position="top-center" />
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">

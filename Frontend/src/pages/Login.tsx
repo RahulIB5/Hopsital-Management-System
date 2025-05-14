@@ -1,21 +1,30 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { LogIn, UserPlus } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import api from '../lib/axios';
 import toast, { Toaster } from 'react-hot-toast';
 
-export default function Login() {
+interface LoginProps {
+  isSignupMode?: boolean;
+}
+
+export default function Login({ isSignupMode = false }: LoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('user');
   const [isLoading, setIsLoading] = useState(false);
-  const [isSignupMode, setIsSignupMode] = useState(false);
+  const [isSignup, setIsSignup] = useState(isSignupMode);
   const navigate = useNavigate();
   const location = useLocation();
   const setAuth = useAuthStore((state) => state.setAuth);
 
   const from = location.state?.from?.pathname || '/dashboard';
+
+  // Sync isSignup with prop
+  useEffect(() => {
+    setIsSignup(isSignupMode);
+  }, [isSignupMode]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,7 +92,7 @@ export default function Login() {
       });
 
       toast.success('Registration successful! Please log in.');
-      setIsSignupMode(false);
+      setIsSignup(false);
       setEmail('');
       setPassword('');
       setRole('user');
@@ -118,16 +127,16 @@ export default function Login() {
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg transform transition-all duration-500 ease-in-out opacity-0 translate-y-4" style={{ animation: 'fadeInUp 0.5s forwards' }}>
         <div>
           <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-blue-100 transform transition-transform duration-300 ease-in-out hover:scale-110">
-            {isSignupMode ? (
+            {isSignup ? (
               <UserPlus className="h-6 w-6 text-blue-600" />
             ) : (
               <LogIn className="h-6 w-6 text-blue-600" />
             )}
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            {isSignupMode ? 'Create a new account' : 'Sign in to your account'}
+            {isSignup ? 'Create a new account' : 'Sign in to your account'}
           </h2>
-          {!isSignupMode && (
+          {!isSignup && (
             <p className="mt-2 text-center text-sm text-gray-600">
               Default admin credentials:
               <br />
@@ -137,7 +146,7 @@ export default function Login() {
             </p>
           )}
         </div>
-        <form className="mt-8 space-y-6" onSubmit={isSignupMode ? handleSignup : handleLogin}>
+        <form className="mt-8 space-y-6" onSubmit={isSignup ? handleSignup : handleLogin}>
           <div className="rounded-lg shadow-sm -space-y-px">
             <div>
               <label htmlFor="email-address" className="sr-only">
@@ -164,10 +173,10 @@ export default function Login() {
                 id="password"
                 name="password"
                 type="password"
-                autoComplete={isSignupMode ? 'new-password' : 'current-password'}
+                autoComplete={isSignup ? 'new-password' : 'current-password'}
                 required
                 className={`appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 ${
-                  isSignupMode ? 'rounded-b-lg' : ''
+                  isSignup ? 'rounded-b-lg' : ''
                 } focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm transition-all duration-300 ease-in-out`}
                 placeholder="Password"
                 value={password}
@@ -175,7 +184,7 @@ export default function Login() {
                 disabled={isLoading}
               />
             </div>
-            {isSignupMode && (
+            {isSignup && (
               <div>
                 <label htmlFor="role" className="sr-only">
                   Role
@@ -205,10 +214,10 @@ export default function Login() {
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 ease-in-out transform hover:scale-105"
             >
               {isLoading
-                ? isSignupMode
+                ? isSignup
                   ? 'Signing up...'
                   : 'Signing in...'
-                : isSignupMode
+                : isSignup
                 ? 'Sign up'
                 : 'Sign in'}
             </button>
@@ -217,11 +226,11 @@ export default function Login() {
           <div className="text-center">
             <button
               type="button"
-              onClick={() => setIsSignupMode(!isSignupMode)}
+              onClick={() => setIsSignup(!isSignup)}
               className="text-sm text-blue-600 hover:text-blue-800 transition-colors duration-300 ease-in-out"
               disabled={isLoading}
             >
-              {isSignupMode ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+              {isSignup ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
             </button>
           </div>
         </form>
