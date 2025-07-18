@@ -13,10 +13,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
+origins = [
+    "https://hospital-management-system.vercel.app",  # your frontend
+    "http://localhost:5173"  # for local dev
+]
+
 # CORS — only local for now
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("FRONTEND_URL")],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
