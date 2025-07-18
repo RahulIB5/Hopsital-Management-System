@@ -2,12 +2,13 @@ import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000',
+  baseURL: import.meta.env.VITE_BACKEND_URL,
   headers: {
     'Content-Type': 'application/json',
   },
   withCredentials: true,
 });
+
 
 api.interceptors.request.use((config) => {
   console.log('Axios Request:', {

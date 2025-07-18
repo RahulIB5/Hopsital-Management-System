@@ -13,13 +13,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# CORS — only local for now
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Match your frontend origin
+    allow_origins=[os.getenv("FRONTEND_URL")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 app.include_router(auth.router)
 app.include_router(users.router)

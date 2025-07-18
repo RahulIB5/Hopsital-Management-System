@@ -7,7 +7,7 @@ import Dashboard from './pages/Dashboard';
 import Patients from './pages/Patients';
 import Doctors from './pages/Doctors';
 import Appointments from './pages/Appointments';
-import About from './pages/about';
+import About from './pages/About';
 import Services from './pages/services';
 import Contact from './pages/contact';
 import PrivateRoute from './components/PrivateRoute';
