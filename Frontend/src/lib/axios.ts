@@ -3,9 +3,6 @@ import { useAuthStore } from '../stores/authStore';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_BACKEND_URL || "https://hopsital-management-system.onrender.com/",
-  headers: {
-    'Content-Type': 'application/json',
-  },
   withCredentials: true,
 });
 
