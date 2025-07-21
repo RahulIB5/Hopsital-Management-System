@@ -52,22 +52,14 @@ app = FastAPI(
 # CORS configuration - Updated for production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://hopsital-management-system.vercel.app",  # Your frontend URL
-        "http://localhost:5173",  # Vite dev server
-        os.getenv("FRONTEND_URL", "https://hopsital-management-system.vercel.app")
-    ],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=[
-        "Accept",
-        "Accept-Language", 
-        "Content-Language",
-        "Content-Type",
-        "Authorization",
-        "X-Requested-With"
-    ],
+    app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
     expose_headers=["*"],
+    )
 )
 
 app.include_router(auth.router)
