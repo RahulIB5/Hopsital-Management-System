@@ -1,12 +1,14 @@
 #!/bin/bash
 
+cd "$(dirname "$0")"  # Go to backend directory
+
 echo "🔧 Installing dependencies..."
 pip install -r requirements.txt
 
 echo "⚙️ Generating Prisma Client..."
-prisma generate
+python -m prisma generate
 
 echo "📦 Fetching Prisma query engine binaries..."
-prisma py fetch
+python -m prisma py fetch
 
-echo "✅ Build complete!"
+echo "✅ Backend build complete!"
