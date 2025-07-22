@@ -1,9 +1,14 @@
-services:
-  - type: web
-    name: hospital-backend
-    env: python
-    buildCommand: |
-      pip install -r Backend/requirements.txt
-      cd Backend
-      prisma generate
-    startCommand: uvicorn Backend.app.main:app --host 0.0.0.0 --port $PORT
+# services:
+#   - type: web
+#     name: hpms-api
+#     env: python
+#     plan: free
+#     buildCommand: ./Backend/build.sh
+#     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+#     rootDir: Backend
+#     autoDeploy: true
+#     envVars:
+#       - key: DATABASE_URL
+#         value: YOUR_DATABASE_URL
+#       - key: PYTHON_VERSION
+#         value: 3.11
